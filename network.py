@@ -44,12 +44,11 @@ class Network(object):
         self.biases = [np.random.randn(y, 1) for y in sizes[1:]]
         #Crea una matriz de tamaño (y,1) con valores aleatorios
         #[1:] desde la segunda capa hasta la última
-        self.weights = [np.random.randn(y, x)
+        self.weights = [np.random.randn(y, x) / np.sqrt(x)
                         for x, y in zip(sizes[:-1], sizes[1:])]
-        #Creamos los pesos que conectan capa a capa. zip empareja el
-        #tamaño de cada capa con el de la siguiente.
-        #Crea una matriz de pesos para conectar x neuronas de la capa
-        #anterior con y neuronas de la capa actual
+        #Modificamos el código para introducir / np.sqrt(x) a
+        #la distribución de pesos, esto con la finalidad de
+        #evitar la saturación de neuronas
 
     def feedforward(self, a): #función de activación
         """Return the output of the network if ``a`` is input."""
