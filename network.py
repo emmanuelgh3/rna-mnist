@@ -135,10 +135,9 @@ class Network(object):
             activation = sigmoid(z) #Calcular activación
             activations.append(activation) #Almacenar activaciones
         # backward pass
-        delta = self.cost_derivative(activations[-1], y) * \
-            sigmoid_prime(zs[-1])
-        #Derivada de la función de costo evaluada en tales activaciones
-        #dados ciertos datos, multiplicando por la derivada de sig
+        delta = cross_entropy_delta(activations[-1], y)
+        #Originalmente delta incluia la derivada de la función de costo. 
+        #Ahora aplicamos la derivada de la función cross-entropy.
         nabla_b[-1] = delta
         #Las derivadas respecto a las betas son las mismas deltas
         nabla_w[-1] = np.dot(delta, activations[-2].transpose())
@@ -179,3 +178,9 @@ def sigmoid(z):
 def sigmoid_prime(z):
     """Derivative of the sigmoid function."""
     return sigmoid(z)*(1-sigmoid(z))
+
+#Definimos la función cross-entropy
+def cross_entropy_delta(a, y):
+    #Con sigmoid en salida, C-E hace que dC/dz = a - y
+    return a - y
+
