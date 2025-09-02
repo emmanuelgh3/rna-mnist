@@ -50,6 +50,11 @@ class Network(object):
         #la distribución de pesos, esto con la finalidad de
         #evitar la saturación de neuronas
 
+        self.v_biases = [np.zeros_like(b) for b in self.biases]
+        self.v_weights = [np.zeros_like(w) for w in self.weights]
+        #Para agregar el momentum al SGD debemos definir las
+        #velocidades para bias y weights. Inicializamos ambas en 0s
+
     def feedforward(self, a): #función de activación
         """Return the output of the network if ``a`` is input."""
         for b, w in zip(self.biases, self.weights): 
@@ -58,8 +63,9 @@ class Network(object):
         return a
 
     #Función que divide el conjunto de datos en los batches
+    #Agregamos el parámetro mu (momentum) con valor 0 por defecto
     def SGD(self, training_data, epochs, mini_batch_size, eta,
-            test_data=None):
+            test_data=None, mu=0.0):
         """Train the neural network using mini-batch stochastic
         gradient descent.  The ``training_data`` is a list of tuples
         ``(x, y)`` representing the training inputs and the desired
@@ -76,6 +82,10 @@ class Network(object):
             test_data = list(test_data)     #Lista del test_data
             n_test = len(test_data)         #Número de datos test
 
+        #Reiniciamos momentum al iniciar el entrenamiento
+        self.v_biases = [np.zeros_like(b) for b in self.biases]
+        self.v_weights = [np.zeros_like(w) for w in self.weights]
+                
         for j in range(epochs):
             random.shuffle(training_data)
             mini_batches = [
@@ -84,7 +94,8 @@ class Network(object):
                 for k in range(0, n, mini_batch_size)]
             for mini_batch in mini_batches:
             #Para cada mini_batch se debe actualizar el peso
-                self.update_mini_batch(mini_batch, eta)
+            #Agregamos el parámetro mu para usarlo en la función
+                self.update_mini_batch(mini_batch, eta, mu)
                 #Se llama a la función que actualiza el peso
             if test_data:
                 print("Epoch {} : {} / {}".format(j,self.evaluate(test_data),n_test))
@@ -92,7 +103,8 @@ class Network(object):
             else:
                 print("Epoch {} complete".format(j))
 
-    def update_mini_batch(self, mini_batch, eta):
+    #Agregamos el parámetro mu a la función
+    def update_mini_batch(self, mini_batch, eta, mu=0.0):
         """Update the network's weights and biases by applying
         gradient descent using backpropagation to a single mini batch.
         The ``mini_batch`` is a list of tuples ``(x, y)``, and ``eta``
@@ -105,13 +117,21 @@ class Network(object):
             #Se evalua la suma sobre x de C = SUM C_x
             nabla_b = [nb+dnb for nb, dnb in zip(nabla_b, delta_nabla_b)]
             nabla_w = [nw+dnw for nw, dnw in zip(nabla_w, delta_nabla_w)]
-        self.weights = [w-(eta/len(mini_batch))*nw
-                        for w, nw in zip(self.weights, nabla_w)]
-        #Actualizar pesos, da un paso de tamaño proporcional al eta
-        self.biases = [b-(eta/len(mini_batch))*nb
-                       for b, nb in zip(self.biases, nabla_b)]
-        #Actualizar bias, el signo menos indica la dirección negativa
-        #del crecimiento (- grad)
+
+        #Actualizar pesos y bias, paso proporcional a eta
+        #Con momentum, evitamos que dicho paso se quede atorado en un
+        #mínimo local. Usamos la formula vista en clase.
+        #Actualizamos primero velocidades y luego parámetros (b y w)
+        self.v_weights = [mu*vw - (eta/len(mini_batch))*nw
+                          for vw, nw in zip(self.v_weights, nabla_w)]
+        self.weights   = [w + vw for w, vw in zip(self.weights, self.v_weights)]
+        #(v_w)^(t+1) = mu*(v_w)^t - eta*(grad_w C), w^(t+1) = w^t + (v_w)^(t+1)
+        self.v_biases  = [mu*vb - (eta/len(mini_batch))*nb
+                          for vb, nb in zip(self.v_biases, nabla_b)]
+        self.biases    = [b + vb for b, vb in zip(self.biases, self.v_biases)]
+        #(v_b)^(t+1) = mu*(v_b)^t - eta*(grad_b C), b^(t+1) = b^t + (v_b)^(t+1)
+
+
 
     def backprop(self, x, y):
         """Return a tuple ``(nabla_b, nabla_w)`` representing the
